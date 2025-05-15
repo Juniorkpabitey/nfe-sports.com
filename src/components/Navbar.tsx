@@ -2,16 +2,36 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const Navbar = () => {
   const pathname = usePathname();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // State for mobile menu
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   const navLinks = [
     { href: "/matches", label: "Matches" },
     { href: "/predict", label: "Predictions" },
   ];
+
+  // Close mobile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen((prev) => !prev);
@@ -24,6 +44,7 @@ const Navbar = () => {
         <Link
           href="/"
           className="text-2xl font-bold text-primary-500 hover:text-primary-400 transition-colors"
+          onClick={() => setIsMobileMenuOpen(false)}
         >
           NFE
         </Link>
@@ -53,6 +74,7 @@ const Navbar = () => {
           <button
             onClick={toggleMobileMenu}
             className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none"
+            aria-expanded={isMobileMenuOpen}
           >
             <span className="sr-only">Open main menu</span>
             {isMobileMenuOpen ? (
@@ -90,35 +112,32 @@ const Navbar = () => {
         </div>
       </div>
 
-     {/* Mobile Menu */}
-<div
-  className={`md:hidden transition-all duration-300 ease-in-out ${
-    isMobileMenuOpen ? "block" : "hidden"
-  }`}
->
-  <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-    {navLinks.map((link) => (
-      <Link
-        key={link.href}
-        href={link.href}
-        onClick={() => setIsMobileMenuOpen(false)} // Close menu on selection
-        className={`block px-3 py-2 rounded-md text-base font-medium ${
-          pathname.startsWith(link.href)
-            ? "bg-gray-900 text-white"
-            : "text-gray-300 hover:text-white hover:bg-gray-700"
+      {/* Mobile Menu */}
+      <div
+        ref={mobileMenuRef}
+        className={`md:hidden transition-all duration-300 ease-in-out overflow-hidden ${
+          isMobileMenuOpen ? "max-h-96" : "max-h-0"
         }`}
       >
-        {link.label}
-      </Link>
-    ))}
-    <button
-      onClick={() => setIsMobileMenuOpen(false)} // Close menu on button click
-      className="block w-full text-left bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-sm transition-colors"
-    >
-      Settings
-    </button>
-  </div>
-</div>
+        <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-gray-800">
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                pathname.startsWith(link.href)
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-300 hover:text-white hover:bg-gray-700"
+              }`}
+            >
+              {link.label}
+            </Link>
+          ))}
+          <button className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700 transition-colors">
+            Settings
+          </button>
+        </div>
+      </div>
     </nav>
   );
 };
