@@ -1,15 +1,14 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { IoSend } from "react-icons/io5";
-import { FaFutbol, FaSpinner } from "react-icons/fa";
+import { FaFutbol } from "react-icons/fa";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Image from 'next/image';
 
 // API Configuration
-const FOOTBALL_DATA_API_KEY = process.env.NEXT_PUBLIC_FOOTBALL_DATA_API_KEY || "";
 const OPENROUTER_API_KEY = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || "";
 const SITE_NAME = "NFE Football Predictor";
 const SITE_URL = typeof window !== 'undefined' ? window.location.origin : "";
@@ -70,265 +69,12 @@ interface Message {
   text: string;
 }
 
-interface Match {
-  id: number;
-  utcDate: string;
-  status: string;
-  homeTeam: {
-    id: number;
-    name: string;
-    crest: string;
-  };
-  awayTeam: {
-    id: number;
-    name: string;
-    crest: string;
-  };
-  score?: {
-    fullTime: {
-      home: number | null;
-      away: number | null;
-    };
-  };
-  competition: {
-    name: string;
-  };
-  venue?: string;
-}
-
-const MatchCard = ({ match, onClick }: { match: Match, onClick: () => void }) => {
-  const getTime = new Date(match.utcDate).toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ scale: 1.02 }}
-      className="bg-gray-800 p-4 rounded-lg border border-gray-700 cursor-pointer"
-      onClick={onClick}
-    >
-      <div className="flex justify-between items-center mb-2">
-        <span className="text-gray-400 text-sm">
-          {new Date(match.utcDate).toLocaleDateString()}
-        </span>
-        <span className="text-gray-400 text-sm">{getTime}</span>
-      </div>
-      
-      <div className="grid grid-cols-3 items-center mb-2">
-        <div className="flex items-center">
-          <div className="w-6 h-6 relative mr-2">
-            <Image 
-              src={match.homeTeam.crest || ""} 
-              alt={match.homeTeam.name} 
-              fill 
-              className="object-contain" 
-              sizes="24px"
-            />
-          </div>
-          <p className="text-sm line-clamp-1">{match.homeTeam.name}</p>
-        </div>
-        
-        <div className="px-2 m-auto flex justify-center items-center bg-slate-600 rounded-md">
-          {match.status === 'FINISHED' ? (
-            <p className="py-1 text-teal-400 text-xs">
-              {match.score?.fullTime.home ?? '-'} : {match.score?.fullTime.away ?? '-'}
-            </p>
-          ) : (
-            <p className="py-1 text-teal-400 text-xs">VS</p>
-          )}
-        </div>
-        
-        <div className="flex items-center justify-end">
-          <p className="text-sm text-right line-clamp-1">{match.awayTeam.name}</p>
-          <div className="w-6 h-6 relative ml-2">
-            <Image 
-              src={match.awayTeam.crest || ""} 
-              alt={match.awayTeam.name} 
-              fill 
-              className="object-contain" 
-              sizes="24px"
-            />
-          </div>
-        </div>
-      </div>
-      
-      <div className="text-gray-400 text-sm text-center mt-2 line-clamp-1">
-        {match.venue || "Unknown venue"} • {match.competition.name}
-      </div>
-      
-      <button 
-        className="w-full mt-3 bg-green-600 hover:bg-green-700 text-white py-1 rounded text-sm transition-colors"
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick();
-        }}
-      >
-        Predict This Match
-      </button>
-    </motion.div>
-  );
-};
-
 const PredictionPage = () => {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedLeague, setSelectedLeague] = useState(footballLeagues[0]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [isFetchingMatches, setIsFetchingMatches] = useState(false);
-  const [apiKeyStatus, setApiKeyStatus] = useState<"checking" | "valid" | "invalid">("checking");
-
-  // Check API key validity
-  useEffect(() => {
-    const checkApiKey = async () => {
-      if (!FOOTBALL_DATA_API_KEY) {
-        setApiKeyStatus("invalid");
-        setError("Football Data API key not configured. Using sample data.");
-        setMatches(getSampleMatches());
-        return;
-      }
-
-      try {
-        const testResponse = await fetch(
-          `https://api.football-data.org/v4/competitions/PL/matches`,
-          {
-            method: "GET",
-            headers: {
-              "X-Auth-Token": FOOTBALL_DATA_API_KEY,
-            },
-          }
-        );
-
-        if (testResponse.status === 403) {
-          setApiKeyStatus("invalid");
-          setError("Invalid Football Data API key. Using sample data.");
-          setMatches(getSampleMatches());
-        } else {
-          setApiKeyStatus("valid");
-          fetchMatches(selectedLeague.code);
-        }
-      } catch (err) {
-        console.error("API key check failed:", err);
-        setApiKeyStatus("invalid");
-        setError("Failed to verify API key. Using sample data.");
-        setMatches(getSampleMatches());
-      }
-    };
-
-    checkApiKey();
-  }, []);
-
-  // Fetch matches from football-data.org API
-  const fetchMatches = async (competitionCode: string) => {
-    if (apiKeyStatus !== "valid") {
-      setMatches(getSampleMatches());
-      return;
-    }
-
-    setIsFetchingMatches(true);
-    try {
-      const response = await fetch(
-        `https://api.football-data.org/v4/competitions/${competitionCode}/matches`,
-        {
-          method: "GET",
-          headers: {
-            "X-Auth-Token": FOOTBALL_DATA_API_KEY,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch matches: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      const formattedMatches = data.matches
-        .filter((match: any) => match.status === "SCHEDULED" || match.status === "FINISHED")
-        .map((match: any) => ({
-          id: match.id,
-          utcDate: match.utcDate,
-          status: match.status,
-          homeTeam: {
-            id: match.homeTeam.id,
-            name: match.homeTeam.name,
-            crest: match.homeTeam.crest || "",
-          },
-          awayTeam: {
-            id: match.awayTeam.id,
-            name: match.awayTeam.name,
-            crest: match.awayTeam.crest || "",
-          },
-          score: match.score,
-          competition: match.competition,
-          venue: match.venue || "Unknown venue"
-        }));
-
-      setMatches(formattedMatches.slice(0, 10));
-      setError(null);
-    } catch (err) {
-      console.error("Error fetching matches:", err);
-      setError("Could not load matches. Using sample data.");
-      setMatches(getSampleMatches());
-    } finally {
-      setIsFetchingMatches(false);
-    }
-  };
-
-  // Fallback sample matches
-  const getSampleMatches = (): Match[] => [
-    {
-      id: 1,
-      utcDate: new Date().toISOString(),
-      status: "SCHEDULED",
-      homeTeam: {
-        id: 1,
-        name: "Arsenal",
-        crest: "",
-      },
-      awayTeam: {
-        id: 2,
-        name: "Chelsea",
-        crest: "",
-      },
-      competition: {
-        name: "Premier League"
-      },
-      venue: "Emirates Stadium"
-    },
-    {
-      id: 2,
-      utcDate: new Date(Date.now() + 86400000).toISOString(),
-      status: "SCHEDULED",
-      homeTeam: {
-        id: 3,
-        name: "Barcelona",
-        crest: "",
-      },
-      awayTeam: {
-        id: 4,
-        name: "Real Madrid",
-        crest: "",
-      },
-      competition: {
-        name: "La Liga"
-      },
-      venue: "Camp Nou"
-    }
-  ];
-
-  // Fetch matches when league changes
-  useEffect(() => {
-    if (selectedLeague.code && apiKeyStatus === "valid") {
-      fetchMatches(selectedLeague.code);
-    } else if (apiKeyStatus === "invalid") {
-      setMatches(getSampleMatches());
-    }
-  }, [selectedLeague, apiKeyStatus]);
 
   // Generate prediction using OpenRouter API
   const generatePrediction = async (userPrompt: string) => {
@@ -357,7 +103,7 @@ const PredictionPage = () => {
             },
             { 
               role: "user", 
-              content: `${selectedLeague.name} match prediction request:\n${userPrompt}\n\nCurrent matches: ${JSON.stringify(matches.slice(0, 3))}` 
+              content: `${selectedLeague.name} match prediction request:\n${userPrompt}`
             }
           ],
           temperature: 0.3,
@@ -388,22 +134,17 @@ const PredictionPage = () => {
     }
   };
 
-  const handlePredictionRequest = async (match?: Match) => {
-    const query = match 
-      ? `${match.homeTeam.name} vs ${match.awayTeam.name} on ${new Date(match.utcDate).toLocaleDateString()} at ${new Date(match.utcDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (${match.competition.name})`
-      : message;
-
-    if (!query.trim()) {
-      setError("Please enter or select a match");
+  const handlePredictionRequest = async () => {
+    if (!message.trim()) {
+      setError("Please enter match details");
       return;
     }
 
     try {
-      const prediction = await generatePrediction(query);
-      console.log("Received prediction:", prediction); // Debug log
+      const prediction = await generatePrediction(message);
       setMessages(prev => [
         ...prev,
-        { type: "userMsg", text: query },
+        { type: "userMsg", text: message },
         { type: "responseMsg", text: prediction }
       ]);
       setMessage("");
@@ -466,40 +207,6 @@ const PredictionPage = () => {
             </motion.button>
           ))}
         </div>
-
-        {/* API Key Warning */}
-        {apiKeyStatus === "invalid" && (
-          <div className="bg-yellow-900/50 border border-yellow-700 text-yellow-300 p-3 rounded-lg mb-6 text-sm">
-            <p>Warning: Football Data API key is not configured or invalid. Using sample data.</p>
-            <p className="mt-1">For full functionality, please configure a valid API key.</p>
-          </div>
-        )}
-
-        {/* Upcoming Matches */}
-        {messages.length === 0 && (
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              {isFetchingMatches ? (
-                <>
-                  <FaSpinner className="animate-spin" />
-                  Loading {selectedLeague.name} Matches...
-                </>
-              ) : (
-                `Upcoming ${selectedLeague.name} Matches`
-              )}
-            </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {matches.map((match) => (
-                <MatchCard 
-                  key={match.id} 
-                  match={match} 
-                  onClick={() => handlePredictionRequest(match)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Betting Platforms */}
         {messages.length === 0 && (
@@ -594,13 +301,13 @@ const PredictionPage = () => {
                 setError(null);
               }}
               type="text"
-              placeholder="Enter match or select from above"
+              placeholder="Enter match details (e.g. 'Manchester United vs Liverpool this weekend')"
               className="bg-transparent flex-1 outline-none text-white placeholder-gray-400"
               onKeyDown={(e) => e.key === "Enter" && !isLoading && handlePredictionRequest()}
               disabled={isLoading}
             />
             <button 
-              onClick={() => handlePredictionRequest()}
+              onClick={handlePredictionRequest}
               disabled={isLoading}
               className="text-green-500 text-2xl p-2 hover:text-green-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               aria-label="Predict match"
