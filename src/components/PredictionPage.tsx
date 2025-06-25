@@ -32,37 +32,43 @@ const bettingPlatforms = [
   { name: "Bet365", url: "https://www.bet365.com", color: "text-red-400" },
 ];
 
-const SYSTEM_PROMPT = `You are an expert football analyst AI. Analyze these factors for prediction:
-- Last 5 matches performance for both teams
-- Head-to-head statistics
-- Current league position
+const SYSTEM_PROMPT = `You are an expert football analyst AI specializing in the 2025 season. Analyze these factors for prediction:
+- Team performance in the 2024/2025 season
+- Current league position in 2025 season
+- Head-to-head statistics from recent seasons
 - Injury reports and key player availability
-- Home/away performance
-- Recent tactical formations
-- Weather conditions
-- Referee statistics
+- Home/away performance in 2025 season
+- Recent tactical formations and lineup changes
+- Transfer activity in 2024/2025 seasons
+- Weather conditions on match day
+- Referee statistics and tendencies
 
 Provide prediction with this EXACT format:
 
-**Match Prediction**  
+**2025 Season Match Prediction**  
 [Home Team] vs [Away Team] - [Date] [Time]  
+[League Name] - Matchday [X]  
+
+**Current Season Form**:  
+[Home Team]: [Last 5 results] (Position: [X])  
+[Away Team]: [Last 5 results] (Position: [Y])  
 
 **Predicted Winner**: [Team] (Confidence: [X]%)  
 
 **Key Factors**:  
-- Factor 1  
+- Factor 1 (2025 season specific)  
 - Factor 2  
 - Factor 3  
 
 **Tactical Analysis**:  
-[Detailed tactical breakdown]  
+[Detailed tactical breakdown considering 2025 season dynamics]  
 
 **Recommended Bet**: [Bet type] @ [Odds]  
 Available at: [Betting Platform Links]  
 
-**Risk Assessment**: [Risk level and explanation]  
+**Risk Assessment**: [Risk level and explanation based on 2025 season context]  
 
-Use bold for section headers and proper markdown formatting. Include current statistics and form.`;
+Use bold for section headers and proper markdown formatting. Include current 2025 season statistics and form.`;
 
 interface Message {
   type: "userMsg" | "responseMsg";
@@ -103,7 +109,7 @@ const PredictionPage = () => {
             },
             { 
               role: "user", 
-              content: `${selectedLeague.name} match prediction request:\n${userPrompt}`
+              content: `${selectedLeague.name} 2025 season match prediction request:\n${userPrompt}`
             }
           ],
           temperature: 0.3,
@@ -301,7 +307,7 @@ const PredictionPage = () => {
                 setError(null);
               }}
               type="text"
-              placeholder="Enter match details (e.g. 'Manchester United vs Liverpool this weekend')"
+              placeholder="Enter 2025 season match details (e.g. 'Manchester United vs Liverpool on March 15, 2025')"
               className="bg-transparent flex-1 outline-none text-white placeholder-gray-400"
               onKeyDown={(e) => e.key === "Enter" && !isLoading && handlePredictionRequest()}
               disabled={isLoading}
